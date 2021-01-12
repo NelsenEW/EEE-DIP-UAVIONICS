@@ -1,0 +1,4 @@
+Please add this to the Arduino library folder
+
+<ESPAsyncWebServer> 	https://github.com/me-no-dev/ESPAsyncWebServer/archive/master.zip
+<AsyncTCP> 		https://github.com/me-no-dev/AsyncTCP/archive/master.zip
