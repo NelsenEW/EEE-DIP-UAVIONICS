@@ -5,6 +5,8 @@ The first phase emphasizes on cultivating direct individualized hands-on experie
 
 The second phase emphasizes on collaborative team work to achieve a common objective of crafting novel solution to a real-world problem scenario to be unveiled during the project. The whole project brings forth a holistic experience of hands-on practicality; harnessing creativity to innovate and improvise in problem-solving.
 
+## Course Guide and Demo
+For more information, please refer to demonstration folder and the PDF guide (UAVONICS guide vX.Y).
 
 ## Coordinators
 - Assoc Prof Lim Meng Hiot
