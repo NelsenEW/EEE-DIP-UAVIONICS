@@ -2,3 +2,8 @@ Please add this to the Arduino library folder
 
 <ESPAsyncWebServer> 	https://github.com/me-no-dev/ESPAsyncWebServer/archive/master.zip
 <AsyncTCP> 		https://github.com/me-no-dev/AsyncTCP/archive/master.zip
+<Arduino_JSON>		https://github.com/arduino-libraries/Arduino_JSON/archive/0.1.0.zip
+
+Please install the following to Arduino IDE
+
+SPIFFS			https://randomnerdtutorials.com/install-esp32-filesystem-uploader-arduino-ide/
