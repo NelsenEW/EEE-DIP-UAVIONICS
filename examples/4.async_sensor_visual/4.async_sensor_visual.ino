@@ -1,5 +1,5 @@
 /**
-   Asynchronous Camera and Sensor Streamer
+   Asynchronous Sensor Visualization
    @author Nelsen Edbert Winata
    @version Jan 2020
 */
@@ -8,12 +8,13 @@
 #include "soc/rtc_cntl_reg.h"  // Disable brownout problems
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
-#include "Camera.h"            // Camera contains pin definition and streaming class for async web server with TCP
 #include <Wire.h>
 #include <Ticker.h>
 #include "MPU9250.h"
 #include "Adafruit_BMP280.h"
 #include "Adafruit_Sensor.h"
+#include <Arduino_JSON.h>
+#include "SPIFFS.h"
 
 #define DEBUG 1
 
@@ -29,8 +30,8 @@ const char *ssid = "espcam";                // Put your SSID here
 const char *password = "12345678";          // Put your PASSWORD here
 IPAddress apIP = IPAddress(192, 168, 1, 1); // IP address
 #else
-const char *ssid = "********";              // Put your SSID here
-const char *password = "********";          // Put your PASSWORD here
+const char *ssid = "The Promised NeverLAN";              // Put your SSID here
+const char *password = "TitanicSyncing";          // Put your PASSWORD here
 // IP address of ESP32 is automatically configured with DHCP from the Wifi router
 #endif
 
@@ -72,11 +73,12 @@ float   SelfTest[6];    // holds results of gyro and accelerometer self test
 
 // These can be measured once and entered here or can be calculated each time the device is powered on
 float   gyroBias[3] = { -23.56, 9.22, -5.31}, accelBias[3] = {1.66, -2.37, 0.53};
-float   magBias[3] = {71.04, 122.43, -36.90}, magScale[3]  = {1.01, 1.03, 0.96}; // Bias corrections for gyro and accelerometer
+float   magBias[3] = {67.47, 472.31, -103.46}, magScale[3]  = {1.17, 1.30, 0.73}; // Bias corrections for gyro and accelerometer
 
 uint32_t delt_t;// used to control display output rate
 uint32_t count = 0, sumCount = 0;         // used to control display output rate
 float pitch, yaw, roll; // absolute orientation
+float pitchBias = 0, yawBias = 0, rollBias = 0;
 
 float a12, a22, a31, a32, a33;            // rotation matrix coefficients for Euler angles and gravity components
 float deltat = 0.0f, sum = 0.0f;          // integration interval for both filter schemes
@@ -93,11 +95,18 @@ float rate;                               // rate of the sensor update
 
 MPU9250 MPU9250; // instantiate MPU9250 class
 
-Ticker sampler; // Sampling MPU9250 every 10ms period (100 Hz)
+// Sampling MPU9250 every 10ms period (100 Hz)
+Ticker sampler;
+const float samplingPeriod = 0.1;
 
-// HTTP Asynchronous web server on port 80 (HTTP)
+// Create AsyncWebServer object on port 80
 AsyncWebServer server(80);
 
+// Create an Event Source on /events
+AsyncEventSource events("/events");
+
+// Json Variable to Hold Sensor Readings
+JSONVar readings;
 
 #ifdef MADGWICK_WITH_MAGNETO
 __attribute__((optimize("O3"))) void MadgwickQuaternionUpdate(float ax, float ay, float az, float gx, float gy, float gz, float mx, float my, float mz)
@@ -189,7 +198,6 @@ __attribute__((optimize("O3"))) void MadgwickQuaternionUpdate(float ax, float ay
   q[1] = q2 * norm;
   q[2] = q3 * norm;
   q[3] = q4 * norm;
-
 }
 
 #else
@@ -324,25 +332,25 @@ void samplingMPU9250() {
 #endif
   }
 
-    if (DEBUG) {
-      Serial.print("ax = "); Serial.print((int)1000 * ax);
-      Serial.print(" ay = "); Serial.print((int)1000 * ay);
-      Serial.print(" az = "); Serial.print((int)1000 * az); Serial.println(" mg");
-      Serial.print("gx = "); Serial.print( gx, 2);
-      Serial.print(" gy = "); Serial.print( gy, 2);
-      Serial.print(" gz = "); Serial.print( gz, 2); Serial.println(" deg/s");
-      Serial.print("mx = "); Serial.print( (int)mx );
-      Serial.print(" my = "); Serial.print( (int)my );
-      Serial.print(" mz = "); Serial.print( (int)mz ); Serial.println(" mG");
-  //    Serial.print("q0 = "); Serial.print(q[0]);
-  //    Serial.print(" qx = "); Serial.print(q[1]);
-  //    Serial.print(" qy = "); Serial.print(q[2]);
-  //    Serial.print(" qz = "); Serial.println(q[3]);
-  //
-  //    temperature = ((float) MPU9250Data[3]) / 333.87f + 21.0f; // Gyro chip temperature in degrees Centigrade
-  //    // Print temperature in degrees Centigrade
-  //    Serial.print("MPU temperature is ");  Serial.print(temperature, 1);  Serial.println(" degrees C"); // Print T values to tenths of s degree C
-    }
+  if (DEBUG) {
+    Serial.print("ax = "); Serial.print((int)1000 * ax);
+    Serial.print(" ay = "); Serial.print((int)1000 * ay);
+    Serial.print(" az = "); Serial.print((int)1000 * az); Serial.println(" mg");
+    Serial.print("gx = "); Serial.print( gx, 2);
+    Serial.print(" gy = "); Serial.print( gy, 2);
+    Serial.print(" gz = "); Serial.print( gz, 2); Serial.println(" deg/s");
+    Serial.print("mx = "); Serial.print( (int)mx );
+    Serial.print(" my = "); Serial.print( (int)my );
+    Serial.print(" mz = "); Serial.print( (int)mz ); Serial.println(" mG");
+    //    Serial.print("q0 = "); Serial.print(q[0]);
+    //    Serial.print(" qx = "); Serial.print(q[1]);
+    //    Serial.print(" qy = "); Serial.print(q[2]);
+    //    Serial.print(" qz = "); Serial.println(q[3]);
+    //
+    //    temperature = ((float) MPU9250Data[3]) / 333.87f + 21.0f; // Gyro chip temperature in degrees Centigrade
+    //    // Print temperature in degrees Centigrade
+    //    Serial.print("MPU temperature is ");  Serial.print(temperature, 1);  Serial.println(" degrees C"); // Print T values to tenths of s degree C
+  }
 
   a12 =   2.0f * (q[1] * q[2] + q[0] * q[3]);
   a22 =   q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3];
@@ -352,11 +360,11 @@ void samplingMPU9250() {
   pitch = -asinf(a32);
   roll  = atan2f(a31, a33);
   yaw   = atan2f(a12, a22);
-  pitch *= 180.0f / pi;
-  yaw   *= 180.0f / pi;
-  yaw   += 0.13f; // Declination at Singapore is 13 degrees
+  pitch = pitch * (180.0f / pi) - pitchBias;
+  yaw   = yaw * (180.0f / pi) - yawBias;
+  //  yaw   += 0.13f; // Declination at Singapore is 13 degrees
   if (yaw < 0) yaw   += 360.0f; // Ensure yaw stays between 0 and 360
-  roll  *= 180.0f / pi;
+  roll  = roll * (180.0f / pi) - rollBias;
   lin_ax = ax + a31;
   lin_ay = ay + a32;
   lin_az = az - a33;
@@ -368,29 +376,29 @@ void samplingMPU9250() {
     Serial.print(pitch, 2);
     Serial.print(", ");
     Serial.println(roll, 2);
-//    Serial.print("Grav_x, Grav_y, Grav_z: ");
-//    Serial.print(-a31 * 1000.0f, 2);
-//    Serial.print(", ");
-//    Serial.print(-a32 * 1000.0f, 2);
-//    Serial.print(", ");
-//    Serial.print(a33 * 1000.0f, 2);  Serial.println(" mg");
-//    Serial.print("Lin_ax, Lin_ay, Lin_az: ");
-//    Serial.print(lin_ax * 1000.0f, 2);
-//    Serial.print(", ");
-//    Serial.print(lin_ay * 1000.0f, 2);
-//    Serial.print(", ");
-//    Serial.print(lin_az * 1000.0f, 2);  Serial.println(" mg");
+    //    Serial.print("Grav_x, Grav_y, Grav_z: ");
+    //    Serial.print(-a31 * 1000.0f, 2);
+    //    Serial.print(", ");
+    //    Serial.print(-a32 * 1000.0f, 2);
+    //    Serial.print(", ");
+    //    Serial.print(a33 * 1000.0f, 2);  Serial.println(" mg");
+    //    Serial.print("Lin_ax, Lin_ay, Lin_az: ");
+    //    Serial.print(lin_ax * 1000.0f, 2);
+    //    Serial.print(", ");
+    //    Serial.print(lin_ay * 1000.0f, 2);
+    //    Serial.print(", ");
+    //    Serial.print(lin_az * 1000.0f, 2);  Serial.println(" mg");
     rate = (float)sumCount / sum;
     Serial.print("rate = "); Serial.print(rate, 2); Serial.println(" Hz");
     sumCount = 0;
     sum = 0;
   }
-  
+
   bmpPressure = pressure_event.pressure;
   bmpTemperature = temperature_event.temperature;
   height = - 8.6 * (bmpPressure - avgPressure);
 
-  if (DEBUG){
+  if (DEBUG) {
     Serial.print("BMP280 Temperature, Pressure, Height: ");
     Serial.print(bmpTemperature, 2);
     Serial.print(", ");
@@ -398,27 +406,56 @@ void samplingMPU9250() {
     Serial.print(", ");
     Serial.println(height);
   }
+  events.send(getAllReadings().c_str(), "all_readings", millis());
 }
 
+void initSPIFFS() {
+  if (!SPIFFS.begin()) {
+    Serial.println("An error has occurred while mounting SPIFFS");
+  }
+  Serial.println("SPIFFS mounted successfully");
+}
 
 String readSensor() {
   String sensor = String(bmp.readTemperature()) + "\n" + String(bmp.readPressure() / 100.0F) + "\n" + String(height)
-  + "\n" + String((int)(ax * 1000)) + "\n" + String((int)(ay * 1000)) + "\n" + String((int)(az * 1000)) + "\n" + String(gx) + "\n"
-  + String(gy) + "\n" + String(gz) + "\n" + String(mx) + "\n" + String(my) + "\n" + String(mz) 
-  + "\n" + String(pitch) + "\n" + String(roll) + "\n" + String(yaw) + "\n" + String(rate); 
+                  + "\n" + String((int)(ax * 1000)) + "\n" + String((int)(ay * 1000)) + "\n" + String((int)(az * 1000)) + "\n" + String(gx) + "\n"
+                  + String(gy) + "\n" + String(gz) + "\n" + String(mx) + "\n" + String(my) + "\n" + String(mz)
+                  + "\n" + String(pitch) + "\n" + String(roll) + "\n" + String(yaw) + "\n" + String(rate);
   return sensor;
 }
 
+String getAllReadings() {
+  readings["accX"] = String((int)1000 * ax);
+  readings["accY"] = String((int)1000 * ay);
+  readings["accZ"] = String((int)1000 * az);
+  readings["gyroX"] = String(round(gx * 100) / 100.0);
+  readings["gyroY"] = String(round(gy * 100) / 100.0);
+  readings["gyroZ"] = String(round(gz * 100) / 100.0);
+  readings["magX"] = String((int) mx);
+  readings["magY"] = String((int) my);
+  readings["magZ"] = String((int) mz);
+  readings["roll"] = String(round(roll * 100) / 100.0);
+  readings["pitch"] = String(round(pitch * 100) / 100.0);
+  readings["yaw"] = String(round(yaw * 100) / 100.0);
+  readings["temp"] = String(round(bmpTemperature * 100) / 100.0);
+  readings["pres"] = String(round(bmpPressure * 100) / 100.0);
+
+  String allString = JSON.stringify (readings);
+  return allString;
+}
 
 void setup() {
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
 
+  /*********************** Serial Initialization ***********************/
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
 
+  /*********************** SPIFFS Initialization ***********************/
+  initSPIFFS();
 
-  // WiFi setup
+  /*********************** WiFi Setup ***********************/
   IPAddress ip;
 #ifdef SOFTAP_MODE
   WiFi.mode(WIFI_AP);
@@ -446,19 +483,12 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
+  ip = WiFi.localIP();
   Serial.println("");
   Serial.println("WiFi connected");
 #endif
-  Serial.print("Camera Ready! Use 'http://");
-  Serial.print(ip);
-  Serial.println("' to connect");
 
-
-  server.on("/stream.jpg", HTTP_GET, streamJpg);
-  server.on("/sensor", HTTP_GET, [](AsyncWebServerRequest * request) {
-    request->send_P(200, "text/plain", readSensor().c_str());
-  });
-
+  /*********************** Sensor Initialization ***********************/
   Wire.begin(I2C_SDA, I2C_SCL, 400000);
   //MPU9250.I2Cscan(); // should detect BMP280 at 0x76, MPU9250 at 0x71
   if (!bmp.begin(0x76)) {
@@ -495,10 +525,10 @@ void setup() {
     mRes = MPU9250.getMres(Mscale);
 
 #ifdef CALIBRATING
-        MPU9250.calibrateMPU9250(MPU, gyroBias, accelBias); // Calibrate gyro and accelerometers, load biases in bias registers
-        Serial.println("MPU accel biases (mg)"); Serial.println(1000.*accelBias[0]); Serial.println(1000.*accelBias[1]); Serial.println(1000.*accelBias[2]);
-        Serial.println("MPU gyro biases (dps)"); Serial.println(gyroBias[0]); Serial.println(gyroBias[1]); Serial.println(gyroBias[2]);
-        delay(1000);
+    MPU9250.calibrateMPU9250(MPU, gyroBias, accelBias); // Calibrate gyro and accelerometers, load biases in bias registers
+    Serial.println("MPU accel biases (mg)"); Serial.println(1000.*accelBias[0]); Serial.println(1000.*accelBias[1]); Serial.println(1000.*accelBias[2]);
+    Serial.println("MPU gyro biases (dps)"); Serial.println(gyroBias[0]); Serial.println(gyroBias[1]); Serial.println(gyroBias[2]);
+    delay(1000);
 #endif
 
     MPU9250.initMPU9250(MPU, Ascale, Gscale, sampleRate);
@@ -516,10 +546,10 @@ void setup() {
     Serial.print("Z-Axis sensitivity adjustment value "); Serial.println(magCalibration[2], 2);
 
 #ifdef CALIBRATING
-        MPU9250.magcalMPU9250(MPU, magBias, magScale);
-        Serial.println("AK8963 mag biases (mG)"); Serial.println(magBias[0]); Serial.println(magBias[1]); Serial.println(magBias[2]);
-        Serial.println("AK8963 mag scale (mG)"); Serial.println(magScale[0]); Serial.println(magScale[1]); Serial.println(magScale[2]);
-        delay(1000); // add delay to see results before serial spew of data
+    MPU9250.magcalMPU9250(MPU, magBias, magScale);
+    Serial.println("AK8963 mag biases (mG)"); Serial.println(magBias[0]); Serial.println(magBias[1]); Serial.println(magBias[2]);
+    Serial.println("AK8963 mag scale (mG)"); Serial.println(magScale[0]); Serial.println(magScale[1]); Serial.println(magScale[2]);
+    delay(1000); // add delay to see results before serial spew of data
 #endif
   }
   else
@@ -527,7 +557,6 @@ void setup() {
     Serial.print("Could not connect to MPU9250: 0x"); Serial.println(addr, HEX);
     while (1) ; // Loop forever if communication doesn't happen
   }
-
   /* Default settings from datasheet. */
   bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,     /* Operating Mode. */
                   Adafruit_BMP280::SAMPLING_X2,     /* Temp. oversampling */
@@ -536,9 +565,9 @@ void setup() {
                   Adafruit_BMP280::STANDBY_MS_1); /* Standby time. */
 
   delay(3000);
-  
+
   Serial.println("Pressure averaging, do not move or touch the sensors");
-  
+
   // Get average value.
   for (int i = 0; i < 500; i++) {
     bmp_pressure->getEvent(&pressure_event);
@@ -546,15 +575,69 @@ void setup() {
     delay(20);
   }
   avgPressure /= 500;
-  
+
   Serial.print("Average Pressure as bias: ");   Serial.println(avgPressure);
-  cameraInit();
-  sampler.attach(0.1, samplingMPU9250);
+
+
+  Serial.print("Visualization Ready! Use 'http://");
+  Serial.print(ip);
+  Serial.println("' to read");
+  Serial.print("Sensor Ready! Use 'http://");
+  Serial.print(ip);
+  Serial.println("/sensor' to read");
+  delay(2000);
+  /*********************** Ticker Sampler Initialization ***********************/
+  sampler.attach(samplingPeriod, samplingMPU9250);
+
+  /*********************** Server Initialization ***********************/
+
+  // Handle Web Server
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send(SPIFFS, "/index.html", "text/html");
+  });
+
+  server.serveStatic("/", SPIFFS, "/");
+
+  server.on("/reset", HTTP_GET, [](AsyncWebServerRequest * request) {
+    rollBias += roll;
+    pitchBias += pitch;
+    yawBias += yaw;
+    request->send(200, "text/plain", "OK");
+  });
+
+  server.on("/resetX", HTTP_GET, [](AsyncWebServerRequest * request) {
+    rollBias += roll;
+    request->send(200, "text/plain", "OK");
+  });
+
+  server.on("/resetY", HTTP_GET, [](AsyncWebServerRequest * request) {
+    pitchBias += pitch;
+    request->send(200, "text/plain", "OK");
+  });
+
+  server.on("/resetZ", HTTP_GET, [](AsyncWebServerRequest * request) {
+    yawBias += yaw;
+    request->send(200, "text/plain", "OK");
+  });
+
+  server.on("/sensor", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send_P(200, "text/plain", readSensor().c_str());
+  });
+
+  // Handle Web Server Events
+  events.onConnect([](AsyncEventSourceClient * client) {
+    if (client->lastId()) {
+      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
+    }
+    // send event with message "Connected!", id current millis
+    // and set reconnect delay to 1 second
+    client->send("Connected!", NULL, millis(), 10000);
+  });
+
+  server.addHandler(&events);
   server.begin();
 }
 
-
 void loop() { // Implement your control algorithm here
   delay(10000);
-
 }

@@ -1,0 +1,60 @@
+<!DOCTYPE HTML><html>
+<head>
+  <title>ESP Web Server</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" type="text/css" href="style.css">
+  <script src="three.js"></script>
+</head>
+<body>
+  <div class="topnav">
+    <h1> GY91 </h1>
+  </div>
+  <div class="content">
+    <div class="cards">
+      <div class="card">
+        <p class="card-title">ACCELEROMETER</p>
+        <p><span class="reading">X: <span id="accX"></span> mg</span></p>
+        <p><span class="reading">Y: <span id="accY"></span> mg</span></p>
+        <p><span class="reading">Z: <span id="accZ"></span> mg</span></p>
+      </div>
+      <div class="card">
+        <p class="card-title">GYROSCOPE</p>
+        <p><span class="reading">X: <span id="gyroX"></span> degree/s</span></p>
+        <p><span class="reading">Y: <span id="gyroY"></span> degree/s</span></p>
+        <p><span class="reading">Z: <span id="gyroZ"></span> degree/s</span></p>
+      </div>
+      <div class="card">
+        <p class="card-title">MAGNETOMETER</p>
+        <p><span class="reading">X: <span id="magX"></span> mG</span></p>
+        <p><span class="reading">Y: <span id="magY"></span> mG</span></p>
+        <p><span class="reading">Z: <span id="magZ"></span> mG</span></p>
+      </div>
+      <div class="card">
+        <p class="card-title">Principal Axis</p>
+        <p><span class="reading">Roll: <span id="roll"></span> &deg;</span></p>
+        <p><span class="reading">Pitch: <span id="pitch"></span> &deg;</span></p>
+        <p><span class="reading">Yaw: <span id="yaw"></span> &deg;</span></p>
+      </div>
+      <div class="card">
+        <p class="card-title">ENVIRONMENT</p>
+        <p><span class="reading">Temperature: <span id="temp"></span> &deg;C</span></p>
+        <p><span class="reading">Pressure:    <span id="pres"></span> hPa</span></p>
+        <p class="card-title">3D ANIMATION</p>
+        <button id="reset" onclick="resetPosition(this)">RESET POSITION</button>
+        <button id="resetX" onclick="resetPosition(this)">X</button>
+        <button id="resetY" onclick="resetPosition(this)">Y</button>
+        <button id="resetZ" onclick="resetPosition(this)">Z</button>
+      </div>
+
+    </div>
+
+    <div class="cube-content">
+      <div id="3Dcube"></div>
+    </div>
+
+
+  </div>
+<script src="script.js"></script>
+</body>
+</html>
