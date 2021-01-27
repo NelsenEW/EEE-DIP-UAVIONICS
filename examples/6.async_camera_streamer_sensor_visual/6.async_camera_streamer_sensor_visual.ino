@@ -1,5 +1,5 @@
 /**
-   Asynchronous Camera and Sensor Streamer
+   Asynchronous Camera and Sensor Streamer Visualization
    @author Nelsen Edbert Winata
    @version Jan 2020
 */
@@ -31,8 +31,8 @@ const char *ssid = "espcam";                // Put your SSID here
 const char *password = "12345678";          // Put your PASSWORD here
 IPAddress apIP = IPAddress(192, 168, 1, 1); // IP address
 #else
-const char *ssid = "The Promised NeverLAN";              // Put your SSID here
-const char *password = "TitanicSyncing";          // Put your PASSWORD here
+const char *ssid = "**********";              // Put your SSID here
+const char *password = "**********";          // Put your PASSWORD here
 // IP address of ESP32 is automatically configured with DHCP from the Wifi router
 #endif
 
