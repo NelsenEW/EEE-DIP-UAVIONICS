@@ -1,5 +1,5 @@
 /**
-   Asynchronous Camera and Sensor Streamer
+   MPU9250
    @author Nelsen Edbert Winata
    @version Jan 2020
 */
