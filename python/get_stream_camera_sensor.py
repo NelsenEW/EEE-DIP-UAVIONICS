@@ -25,6 +25,11 @@ while True:
             img=cv.resize(img,(640,480))
             cv.imshow("a",img)
         k=cv.waitKey(1)
+        if(time.perf_counter() - prev_time > 0.1):
+            sensor = urlopen(url + '/sensor')
+            print(sensor.read())
+            # Please decode the sensor reading based on the async camera streamer sensor code
+            prev_time = time.perf_counter()
     except Exception as e:
         print("Error:" + str(e))
         bts=b''
