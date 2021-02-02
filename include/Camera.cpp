@@ -1,8 +1,7 @@
 /**
- * Camera ESP32 Asynchronous Web Server
+ * Camera for ESP32
  * @author  Nelsen Edbert Winata
- * @version Jan 2020
- * @brief   Demonstrate asynchronous camera streaming with TCP stack on ESP32-CAM AI thinker board.
+ * @version Feb 2020
 */
 
 #include "Camera.h"
